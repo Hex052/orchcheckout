@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 struct instrument {
 	char *fname;
@@ -16,6 +17,32 @@ int main(void)
 	{
 		printf("   The outtab file could not be opened for reading.");
 		exit(1);
+	}
+
+	//Import list
+	//ssize_t getline(char **lineptr, size_t *n, FILE *stream);
+
+	while (feof(outtab) != 0)
+	{
+		struct instrument *temptostore = malloc(sizeof(struct instrument));
+		char *fileline = malloc(80 * sizeof(char));
+		ssize_t filelinechars;
+		size_t filelinelength = 80;
+		if (filelinechars = getline(&fileline, &filelinelength, outtab) == -1)
+		{
+			free(fileline);
+			free(temptostore);
+		}
+		else
+		{
+			bool loop = true;
+			while (loop)
+			{
+				char *filelinesplit = strtok(fileline, "\t\n");
+				malloc()
+			}
+
+		}
 	}
 
 }
