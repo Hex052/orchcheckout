@@ -14,6 +14,13 @@ void blank(const int length, void **array)
 		array[i] = 0;
 	return;
 }
+void clearline(FILE *input)
+{
+	char c;
+	do
+		c = fgetc(input);
+	while (c != '\n');
+}
 void println(const struct instrument *in, FILE *printdest)
 {
 	fprintf(printdest, "%s\t%d\t%s\t%s\n", in->type, in->num, in->lname, in->fname);
@@ -34,7 +41,31 @@ void addtoarray(struct instrument **array, struct instrument *add)
 {
 	int i = 0;
 	while (array[i] != 0 && i < 30)
+	{
+		if (array[i]->num == add->num)
+		{
+			int errcorrectint = 0; struct instrument *errcorrectstruct;
+			while (errcorrectint > 2 || errcorrectint < 1)
+			{
+				printf("Two instruments exist with the same number %d.\n1)\t", add->num);
+				println(add, stdout); printf("2)\t"); println(array[i], stdout);
+				printf("Which is correct? ");
+				errcorrectint = atoi(getchar());
+				clearline(stdin);
+			}
+			if (errcorrectint == 1)
+				errcorrectstruct = add;
+			else
+				errcorrectstruct = array[i];
+			printf("What number should \n   "); println(errcorrectstruct, stdout); printf("   be corrected to be? (!!Caution: any number will be accepted, doesn't check for non-numbers!!)");
+			char *errcorrectstring = malloc(80 * sizeof(char));
+			size_t n = 80;
+			getline(&errcorrectstring, &n, stdin);
+			errcorrectstruct->num = atoi(errcorrectstring);
+			free(errcorrectstring);
+		}
 		i++
+	}
 	if (i >= 30)
 	{
 		fprintf(stderr, "**** ERR: OUT OF MEMORY FOR MORE INSTRUMENTS OF TYPE %s ****", add->type);
@@ -64,7 +95,6 @@ int main(void)
 
 	//Import list
 	//ssize_t getline(char **lineptr, size_t *n, FILE *stream);
-
 	while (feof(outtab) != 0)
 	{
 		struct instrument *temptostore = malloc(sizeof(struct instrument));
