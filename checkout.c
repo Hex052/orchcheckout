@@ -6,6 +6,7 @@ struct instrument {
 	char *lname;
 	int num;
 	char *type;
+	bool out;
 }
 void blank(const int length, void **array)
 {
@@ -18,13 +19,14 @@ void println(const struct instrument *in, FILE *printdest)
 	fprintf(printdest, "%s\t%d\t%s\t%s\n", in->type, in->num, in->lname, in->fname);
 	return;
 }
-void printarr(const struct instrument **arr, FILE *printdest)
+void printarr(const struct instrument **arr, FILE *printdest, const bool which)
 {
 	for (int i = 0; i < 30; i++)
 	{
 		if (arr[i] == 0)
 			return;
-		println(arr[i], printdest);
+		if (arr[i]->out = which)
+			println(arr[i], printdest);
 	}
 	return;
 }
@@ -66,24 +68,39 @@ int main(void)
 	while (feof(outtab) != 0)
 	{
 		struct instrument *temptostore = malloc(sizeof(struct instrument));
+		temptostore->out = true; temptostore->lname = 0; temptostore->fname = 0; temptostore->type = 0; temptostore->num = 0;
 		char *fileline = malloc(80 * sizeof(char));
 		ssize_t filelinechars;
 		size_t filelinelength = 80;
-		filelinechars = getline(&fileline, &filelinelength, outtab)
+		filelinechars = getline(&fileline, &filelinelength, outtab);
 		if (filelinechars == -1 || fileline[0] == '#' || fileline[0] == '\n')
 		{
-			free(fileline);
+			//free(fileline);
 			free(temptostore);
 		}
 		else
 		{
 			//Divides outtab by \t, loading into temptostore
-
+			char *filelinesplit = strtok(fileline, "\t\n");
 			for (int loop = 0; loop < 4; loop ++)
 			{
-				char *filelinesplit = strtok(fileline, "\t\n");
 				char *linecopy = malloc(filelinechars * sizeof(char));
 				strcopy(linecopy,filelinesplit);
+				//If splitting results in nothing, mark entry as checked out or discard line
+				if (filelinesplit[0] == '\0')
+				{
+					if (loop > 1)
+					{
+						temptostore->out = false;
+					}
+					else if (loop = 1)
+					{
+						free(temptostore->type);
+					}
+					free(linecopy);
+					loop = 7;
+					break;
+				}
 				//Switch based on order in outtab
 				switch (loop)
 				{
@@ -100,10 +117,13 @@ int main(void)
 					case 4:
 						temptostore->fname = linecopy;
 						break;
+					case 7:
+						break;
 					default:
-						fprintf(stderr, "**** ERR: SPLITTING STRING FAILURE ****");
+						fprintf(stderr, "**** ERR: SPLITTING STRING ****");
 						break;
 				}
+				filelinesplit = strtok(NULL, "\t\n");
 			}
 			if (strcmp("vln", temptostore->type) == 0)
 				addtoarray(vln, temptostore);
@@ -121,9 +141,12 @@ int main(void)
 				free(temptostore->fname);
 				free(temptostore);
 			}
+			free(fileline);
 		}
 	}
+	fprintf(stdout, "The current checkouts are as follows:\n");
 
+	fprintf(stdout, "The current checkins are as follows:\n")
 }
 
 /*
