@@ -42,6 +42,7 @@ void addtoarray(struct instrument **array, struct instrument *add)
 	int i = 0;
 	while (array[i] != 0 && i < 30)
 	{
+		//Check to see if the same instrument is already checked out
 		if (array[i]->num == add->num)
 		{
 			int errcorrectint = 0; struct instrument *errcorrectstruct;
@@ -80,6 +81,17 @@ void addtoarray(struct instrument **array, struct instrument *add)
 	}
 	return;
 }
+struct instrument *locateinarray(int num, struct instrument **array)
+{
+	//Locate an instrument of a given number in an array
+	for (int i = 0; i < 30 && array[i] != 0; i++)
+	{
+		if (array[i]->num == num)
+			return array[i];
+	}
+	//If reaches here, none match in array.
+	return 0;
+}
 int main(void)
 {
 
@@ -89,12 +101,13 @@ int main(void)
 	blank(30, vla); blank(30, vln); blank(30, clo); blank(30, bas);
 	if (outtab == 0)
 	{
-		printf("   The outtab file could not be opened for reading.");
+		printf("**** ERR: UNABLE TO OPEN \"outtab\" for reading ****");
 		exit(1);
 	}
 
 	//Import list
 	//ssize_t getline(char **lineptr, size_t *n, FILE *stream);
+	int linenum = 0;
 	while (feof(outtab) != 0)
 	{
 		struct instrument *temptostore = malloc(sizeof(struct instrument));
@@ -103,6 +116,7 @@ int main(void)
 		ssize_t filelinechars;
 		size_t filelinelength = 80;
 		filelinechars = getline(&fileline, &filelinelength, outtab);
+		linenum++;
 		if (filelinechars == -1 || fileline[0] == '#' || fileline[0] == '\n')
 		{
 			//free(fileline);
@@ -174,9 +188,14 @@ int main(void)
 			free(fileline);
 		}
 	}
-	fprintf(stdout, "The current checkouts are as follows:\n");
+	fclose(outtab);
 
-	fprintf(stdout, "The current checkins are as follows:\n")
+	//Make changes to check in/out lists
+	fprintf(stdout, "The current checkouts are as follows:\n");
+	printarr(vln, stdout, true); printarr(vla, stdout, true); printarr(clo, stdout, true); printarr(bas, stdout, true);
+	fprintf(stdout, "The current checkins are as follows:\n");
+	printarr(vln, stdout, false); printarr(vla, stdout, false); printarr(clo, stdout, false); printarr(bas, stdout, false);
+
 }
 
 /*
