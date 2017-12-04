@@ -1,11 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 struct instrument {
-	char *fname;
-	char *lname;
-	int num;
 	char *type;
+	int num;
+	char *lname;
+	char *fname;
 	bool out;
 }
 void blank(const int length, void **array)
@@ -16,23 +17,24 @@ void blank(const int length, void **array)
 }
 void clearline(FILE *input)
 {
-	char c;
+	int c;
 	do
 		c = fgetc(input);
-	while (c != '\n');
+	while (c != '\n' && c != -1);
+	return;
 }
-void println(const struct instrument *in, FILE *printdest)
+void println(struct instrument *in, FILE *printdest)
 {
 	fprintf(printdest, "%s\t%d\t%s\t%s\n", in->type, in->num, in->lname, in->fname);
 	return;
 }
-void printarr(const struct instrument **arr, FILE *printdest, const bool which)
+void printarr(struct instrument **arr, FILE *printdest, const int which) //0 for checked in, 1 for checked out, 2 for all
 {
 	for (int i = 0; i < 30; i++)
 	{
 		if (arr[i] == 0)
 			return;
-		if (arr[i]->out = which)
+		if (arr[i]->out == which || which == 2)
 			println(arr[i], printdest);
 	}
 	return;
@@ -96,7 +98,7 @@ int main(void)
 {
 
 	printf("The outtab file must be located in the same directory as the program, as it stores data about who has checked out what.");
-	FILE *outtab = fopen("outtab", "w");
+	FILE *outtab = fopen("outtab", "r+");
 	struct instrument *vln[30], *vla[30], *clo[30], *bas[30];
 	blank(30, vla); blank(30, vln); blank(30, clo); blank(30, bas);
 	if (outtab == 0)
@@ -113,11 +115,10 @@ int main(void)
 		struct instrument *temptostore = malloc(sizeof(struct instrument));
 		temptostore->out = true; temptostore->lname = 0; temptostore->fname = 0; temptostore->type = 0; temptostore->num = 0;
 		char *fileline = malloc(80 * sizeof(char));
-		ssize_t filelinechars;
-		size_t filelinelength = 80;
+		int filelinechars, filelinelength = 80;
 		filelinechars = getline(&fileline, &filelinelength, outtab);
 		linenum++;
-		if (filelinechars == -1 || fileline[0] == '#' || fileline[0] == '\n')
+		if (filelinechars == EOF || fileline[0] == '#' || fileline[0] == '\n')
 		{
 			//free(fileline);
 			free(temptostore);
@@ -125,34 +126,41 @@ int main(void)
 		else
 		{
 			//Divides outtab by \t, loading into temptostore
-			char *filelinesplit = strtok(fileline, "\t\n");
-			for (int loop = 0; loop < 4; loop ++)
+			char *filelinebegin = fileline, *filelinesplit = strtok(fileline, "\t\n");
+			for (int column = 1; column < 5; column++) //Loop counts column of outtab
 			{
 				char *linecopy = malloc(filelinechars * sizeof(char));
 				strcopy(linecopy,filelinesplit);
 				//If splitting results in nothing, mark entry as checked out or discard line
 				if (filelinesplit[0] == '\0')
 				{
-					if (loop > 1)
+					if (column > 1)
 					{
 						temptostore->out = false;
 					}
-					else if (loop = 1)
+					else if (column = 1)
 					{
 						free(temptostore->type);
 					}
 					free(linecopy);
-					loop = 7;
+					column = 7;
 					break;
 				}
 				//Switch based on order in outtab
-				switch (loop)
+				switch (column)
 				{
 					case 1:
 						temptostore->type = linecopy;
 						break;
 					case 2:
 						temptostore->num = atoi(linecopy);
+						//Ensure sane instrument numbers (ie > 0)
+						if (temptostore->num < 1)
+						{
+							fprintf(stderr,"**** ERR: ABNORMAL INSTRUMENT NUMBER - LINE %d ****", linenum);
+							free(temptostore->type);
+							free(temptostore);
+						}
 						free(linecopy);
 						break;
 					case 3:
@@ -164,7 +172,7 @@ int main(void)
 					case 7:
 						break;
 					default:
-						fprintf(stderr, "**** ERR: SPLITTING STRING ****");
+						fprintf(stderr, "**** ERR: SPLITTING STRING - LINE %d ****", linenum);
 						break;
 				}
 				filelinesplit = strtok(NULL, "\t\n");
@@ -179,16 +187,16 @@ int main(void)
 				addtoarray(bas, temptostore);
 			else
 			{
-				fprintf(stderr, "**** ERR: INSTRUMENT TYPE NOT FOUND: %s ****", temptostore->type);
+				fprintf(stderr, "**** ERR: INSTRUMENT TYPE NOT FOUND: %s - LINE %d ****", temptostore->type, linenum);
 				free(temptostore->type);
 				free(temptostore->lname);
 				free(temptostore->fname);
 				free(temptostore);
 			}
-			free(fileline);
+			free(filelinebegin);
 		}
 	}
-	fclose(outtab);
+	//fclose(outtab);
 
 	//Make changes to check in/out lists
 	fprintf(stdout, "The current checkouts are as follows:\n");
@@ -196,8 +204,8 @@ int main(void)
 	fprintf(stdout, "The current checkins are as follows:\n");
 	printarr(vln, stdout, false); printarr(vla, stdout, false); printarr(clo, stdout, false); printarr(bas, stdout, false);
 
-}
 
+}
 /*
 	Import whole table into array 30 long
 	Prompt for deletion or additon of persons. Print whole list.
