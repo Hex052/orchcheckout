@@ -94,6 +94,68 @@ struct instrument *locateinarray(int num, struct instrument **array)
 	//If reaches here, none match in array.
 	return 0;
 }
+void updateentry(FILE *file, struct instrument *upstruct)
+{
+	fflush(file);
+	long int resume = ftell(file);
+	rewind(file);
+	//long int linestart = ftell(file);
+	int linelen = 80;
+	char *linestr = malloc(linelen * sizeof(char));
+	int linechars = getline(&linestr, &linelen, file);
+	while(linechars != EOF)
+	{
+		if (linestr[0] != '\t' && linestr[0] != '\n' && linestr[0] != '#')
+		{
+			char *compare = strtok(linestr, "\t\n");
+			if (strcmp(compare, upstruct->type) == 0)
+			{
+				compare = strtok(NULL, "\t\n");
+				if (atoi(compare) == upstruct->num)
+				{
+					char upline[81];
+					sprintf(upline, "%s\t%d\t%s\t%s", upstruct->type, upstruct->num, upstruct->lname, upstruct->fname);
+					long int linestart = ftell(file) - linechars;
+					fseek(file, -linechars, SEEK_CUR);
+
+
+					fseek(file, resume, SEEK_SET);
+					return;
+				}
+			}
+		}
+		//linestart = ftell(file);
+		linechars = getline(&fileline, &linelen, file);
+	}
+	println(toupdate, file);
+	fseek(file, resume, SEEK_SET);
+	return;
+}
+int readentry(struct instrument *add, char *line) //1 normal, -1 empty line
+{
+	//Empty and comment lines must already be removed
+	//int linelength = strlen(line) + 2;
+	char *filelinesplit = strtok(line, "\n\t");
+	for (int column = 1; column < 5; column++)
+	{
+		char *linecopy = malloc((strlen(filelinesplit) + 2) * sizeof(char));
+		strcopy(linecopy,filelinesplit);
+		if (linecopy[0] == 0)
+		{
+			free(linecopy);
+			if (column == 1)
+				return -1;
+			if (column == 2)
+			{
+				free(add->type);
+				return -1;
+			}
+
+		}
+
+		filelinesplit = strtok(NULL, "\t\n");
+	}
+}
 int main(void)
 {
 
@@ -204,7 +266,54 @@ int main(void)
 	fprintf(stdout, "The current checkins are as follows:\n");
 	printarr(vln, stdout, false); printarr(vla, stdout, false); printarr(clo, stdout, false); printarr(bas, stdout, false);
 
+	bool contloop = true, save = true;
+	while (contloop)
+	{
 
+		printf("Checkout (o), Checkin (i), Reprint (r), Quit (q), Advanced (~)");
+		switch(getchar())
+		{
+			case 'o':
+			case 'O':
+				struct instrument *temptoinsert = malloc(sizeof(struct instrument));
+				clearline(stdin); //Ensure stdin has no trailing newline
+				printf("Instrument type and num to check out");
+				char *fileline = malloc(80 * sizeof(char));
+				ssize_t filelinechars;
+				size_t filelinelength = 80;
+				filelinechars = getline(&fileline, &filelinelength, stdin);
+				if (filelinechars == -1) //If something wrong happened, notify user and break switch
+				{
+					printf("Something has gone wrong reading the line, please try again.");
+					break;
+				}
+				char *filelinesplit = strtok(fileline, "\t\n");
+				struct instrument **array = 0;
+				//Find correct array - Braces to be able to collapse section
+				{
+					//Determine array the instrument needs to go into
+					if (strcmp(filelinesplit, "vln") == 0)
+						array = vln;
+					else if (strcmp(filelinesplit, "vla") == 0)
+						array = vla;
+					else if (strcmp(filelinesplit, "clo") == 0)
+						array = clo;
+					else if (strcmp(filelinesplit, "bas") == 0)
+						array = bas;
+					else
+					{
+						printf("Instrument type not found: %s\n", filelinesplit);
+						break;
+					}
+				}
+				filelinechars = strtok(NULL, "\t\n");
+				int instrumentnum = atoi(filelinechars);
+
+				char *linecopy = malloc(filelinechars * sizeof(char));
+
+		}
+
+	}
 }
 /*
 	Import whole table into array 30 long
