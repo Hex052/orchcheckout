@@ -2,13 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include "linux-functions.h"
+#define line_size 80
 struct instrument {
 	char *type;
 	int num;
 	char *lname;
 	char *fname;
 	bool out;
-}
+};
 void blank(const int length, void **array)
 {
 	for (int i = 0; i < length; i++)
@@ -53,7 +55,18 @@ void addtoarray(struct instrument **array, struct instrument *add)
 				printf("Two instruments exist with the same number %d.\n1)\t", add->num);
 				println(add, stdout); printf("2)\t"); println(array[i], stdout);
 				printf("Which is correct? ");
-				errcorrectint = atoi(getchar());
+				switch (getchar())
+				{
+				case '1': 
+					errcorrectint = 1;
+					break;
+				case '2':
+					errcorrectint = 2;
+					break;
+				default:
+					printf("I'm sorry, your input wasn't understood. Please try again.\n");
+					break;
+				}
 				clearline(stdin);
 			}
 			if (errcorrectint == 1)
@@ -67,7 +80,7 @@ void addtoarray(struct instrument **array, struct instrument *add)
 			errcorrectstruct->num = atoi(errcorrectstring);
 			free(errcorrectstring);
 		}
-		i++
+		i++;
 	}
 	if (i >= 30)
 	{
@@ -100,7 +113,7 @@ void updateentry(FILE *file, struct instrument *upstruct)
 	long int resume = ftell(file);
 	rewind(file);
 	//long int linestart = ftell(file);
-	int linelen = 80;
+	size_t linelen = line_size;
 	char *linestr = malloc(linelen * sizeof(char));
 	int linechars = getline(&linestr, &linelen, file);
 	while(linechars != EOF)
@@ -125,9 +138,9 @@ void updateentry(FILE *file, struct instrument *upstruct)
 			}
 		}
 		//linestart = ftell(file);
-		linechars = getline(&fileline, &linelen, file);
+		linechars = getline(&linestr, &linelen, file);
 	}
-	println(toupdate, file);
+	//println(linestr, file);
 	fseek(file, resume, SEEK_SET);
 	return;
 }
