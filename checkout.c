@@ -57,7 +57,7 @@ void addtoarray(struct instrument **array, struct instrument *add)
 				printf("Which is correct? ");
 				switch (getchar())
 				{
-				case '1': 
+				case '1':
 					errcorrectint = 1;
 					break;
 				case '2':
@@ -107,45 +107,90 @@ struct instrument *locateinarray(int num, struct instrument **array)
 	//If reaches here, none match in array.
 	return 0;
 }
-void updateentry(FILE *file, struct instrument *upstruct)
+long updatefile(FILE *stream, size_t overwrite, size_t size, char * buffer, long pos)
 {
-	fflush(file);
-	long int resume = ftell(file);
-	rewind(file);
-	//long int linestart = ftell(file);
-	size_t linelen = line_size;
-	char *linestr = malloc(linelen * sizeof(char));
-	int linechars = getline(&linestr, &linelen, file);
-	while(linechars != EOF)
+	//Shuffle bytes around before adding
+	fflush(stream);
+	long size_change = size - overwrite;
+	long resume = ftell(stream);
+	/* Position resume so it stays in the same relative position to
+	 * everything being moved. If locatin is in middle of deleted area,
+	 * position the pointer at the start of area to be deleted */
+	if (resume >= pos)
 	{
-		if (linestr[0] != '\t' && linestr[0] != '\n' && linestr[0] != '#')
-		{
-			char *compare = strtok(linestr, "\t\n");
-			if (strcmp(compare, upstruct->type) == 0)
-			{
-				compare = strtok(NULL, "\t\n");
-				if (atoi(compare) == upstruct->num)
-				{
-					char upline[81];
-					sprintf(upline, "%s\t%d\t%s\t%s", upstruct->type, upstruct->num, upstruct->lname, upstruct->fname);
-					long int linestart = ftell(file) - linechars;
-					fseek(file, -linechars, SEEK_CUR);
-
-
-					fseek(file, resume, SEEK_SET);
-					return;
-				}
-			}
-		}
-		//linestart = ftell(file);
-		linechars = getline(&linestr, &linelen, file);
+		resume = resume + size_change;
+		if (resume < pos)
+			resume = pos;
 	}
-	//println(linestr, file);
-	fseek(file, resume, SEEK_SET);
-	return;
+	/************ Diagram of memory ************
+	     |------------- size --------------|
+	     |-- overwrite --|-- size_change --|
+	          Need to add bytes overall
+	             ****    OR    ****
+	     |---------- overwrite ------------|
+	     |--- size ---|--- size_change ----|
+	          Need to remove bytes overall
+	          Deletion of overwrite if size = 0
+	*******************************************/
+	if (size_change != 0)
+	{
+		fseek(stream, pos + overwrite, SEEK_SET);
+		char *change1 = malloc(1024 * sizeof(char)), *change2;
+		int c, bytes_read1 = 0, bytes_read2 = 0;
+		/* Read in next KiB of file after overwrite, stopping if EOF is
+		 * reached or 1 KiB has been read */
+		long KiBstart1 = ftell(stream), KiBstart2 = 0;
+		while ((c = fgetc(stream)) != EOF && bytes_read1 < 1024)
+		{
+			change1[bytes_read1] = 0;
+			bytes_read1++;
+		}
+		/* For the rest of the file, read in 1KiB as before, back up to
+		 * the start of the KiB, and write out however much was read.
+		 * If EOF was reached, loop will be skipped, and writing out
+		 * will continue after the loop, with correct amount read */
+		while (c != EOF)
+		{
+			KiBstart2 = ftell(stream);
+			bytes_read2 = 0;
+			change2 = malloc(1024 * sizeof(char));
+			while ((c = fgetc(stream)) != EOF && bytes_read2 < 1024)
+			{
+				change2[bytes_read2] = 0;
+				bytes_read2++;
+			}
+			fseek(stream, KiBstart1 + size_change, SEEK_SET);
+			for (int i = 0; i < bytes_read1; i++)
+			{
+				fputc(change1[i], stream);
+			}
+			free(change1);
+			change1 = change2;
+			bytes_read1 = bytes_read2;
+			KiBstart1 = KiBstart2;
+		}
+		/* Seek back to start of last KiB and write out characters that
+		 * have been read. */
+		fseek(stream, KiBstart1 + size_change, SEEK_SET);
+		for (int i = 0; i < bytes_read1; i++)
+		{
+			fputc(change1[i], stream);
+		}
+		free(change1);
+	}
+	//File bytes moved so overall change in length
+	fseek(stream, pos, SEEK_SET);
+	for (int i = 0; i < size; i++)
+	{
+		fputc(buffer[i], stream);
+
+	}
+	fseek(stream, resume, SEEK_SET);
+	return resume;
 }
 int readentry(struct instrument *add, char *line) //1 normal, -1 empty line
 {
+	//TODO fix this function. It doesn't work.
 	//Empty and comment lines must already be removed
 	//int linelength = strlen(line) + 2;
 	char *filelinesplit = strtok(line, "\n\t");
@@ -174,18 +219,19 @@ int main(void)
 
 	printf("The outtab file must be located in the same directory as the program, as it stores data about who has checked out what.");
 	FILE *outtab = fopen("outtab", "r+");
+	rewind(outtab);
 	struct instrument *vln[30], *vla[30], *clo[30], *bas[30];
 	blank(30, vla); blank(30, vln); blank(30, clo); blank(30, bas);
 	if (outtab == 0)
 	{
-		printf("**** ERR: UNABLE TO OPEN \"outtab\" for reading ****");
+		printf("**** ERR: UNABLE TO OPEN \"outtab\" FOR READING. ****\nEnsure the program is located in the same folder as \"outtab\"");
 		exit(1);
 	}
 
 	//Import list
 	//ssize_t getline(char **lineptr, size_t *n, FILE *stream);
 	int linenum = 0;
-	while (feof(outtab) != 0)
+	while (true)
 	{
 		struct instrument *temptostore = malloc(sizeof(struct instrument));
 		temptostore->out = true; temptostore->lname = 0; temptostore->fname = 0; temptostore->type = 0; temptostore->num = 0;
