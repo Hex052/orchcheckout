@@ -11,7 +11,7 @@ struct instrument {
 	char *fname;
 	bool out;
 };
-void blank(const int length, void **array)
+void blank(const int length, struct instrument **array)
 {
 	for (int i = 0; i < length; i++)
 		array[i] = 0;
@@ -109,9 +109,13 @@ struct instrument *locateinarray(int num, struct instrument **array)
 }
 long updatefile(FILE *stream, size_t overwrite, size_t size, char * buffer, long pos)
 {
-	//Shuffle bytes around before adding
+	/* Ensure stream and buffers are valid. buffer may be NULL only if
+	 * no data is being written  */
+	if (stream == NULL || (buffer == NULL && size > 0))
+		return -1;
+	/* Shuffle bytes around before adding */
 	fflush(stream);
-	long size_change = size - overwrite;
+	ssize_t size_change = size - overwrite;
 	long resume = ftell(stream);
 	/* Position resume so it stays in the same relative position to
 	 * everything being moved. If locatin is in middle of deleted area,
@@ -134,6 +138,12 @@ long updatefile(FILE *stream, size_t overwrite, size_t size, char * buffer, long
 	*******************************************/
 	if (size_change != 0)
 	{
+		/* If needed, make file longer */
+		if (size_change > 0)
+		{
+			fseek(stream, 0, SEEK_END);
+			ftruncate(fileno(stream), ftell(stream) + size_change);
+		}
 		fseek(stream, pos + overwrite, SEEK_SET);
 		char *change1 = malloc(1024 * sizeof(char)), *change2;
 		int c, bytes_read1 = 0, bytes_read2 = 0;
@@ -175,6 +185,12 @@ long updatefile(FILE *stream, size_t overwrite, size_t size, char * buffer, long
 		for (int i = 0; i < bytes_read1; i++)
 		{
 			fputc(change1[i], stream);
+		}
+		/* Shrink file space if file has become smaller */
+		if (size_change < 0)
+		{
+			fseek(stream, 0, SEEK_END);
+			ftruncate(fileno(stream), ftell(stream) + size_change);
 		}
 		free(change1);
 	}
@@ -230,13 +246,13 @@ int main(void)
 
 	//Import list
 	//ssize_t getline(char **lineptr, size_t *n, FILE *stream);
-	int linenum = 0;
+	size_t linenum = 0;
 	while (true)
 	{
 		struct instrument *temptostore = malloc(sizeof(struct instrument));
 		temptostore->out = true; temptostore->lname = 0; temptostore->fname = 0; temptostore->type = 0; temptostore->num = 0;
 		char *fileline = malloc(80 * sizeof(char));
-		int filelinechars, filelinelength = 80;
+		size_t filelinechars, filelinelength = 80;
 		filelinechars = getline(&fileline, &filelinelength, outtab);
 		linenum++;
 		if (filelinechars == EOF || fileline[0] == '#' || fileline[0] == '\n')

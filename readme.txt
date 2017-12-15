@@ -10,6 +10,7 @@ ssize_t getline(char **lineptr, size_t *n, FILE *stream);
 
 TODO: truncate is only in POSIX, a similar thing in Windows would be _chsize
 	_chsize( fileno(f), size);
+		or SetEndOfFile
 	int ftruncate(int fildes, off_t length);
 TODO: Need to update the file after changes are made
 TODO: Loop and questions for checkout need finishing
