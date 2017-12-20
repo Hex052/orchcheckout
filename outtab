@@ -1,4 +1,4 @@
-# Type(clo,bas,vla,vln)	Number	Last	First
+# Type(clo,bas,vla,vln)	Number	Last	First	PayType	Model	Contract
 # There were some assumptions made, such as there wouldn't be more than 30 of any instrument. If this changes, the source code needs to be updated to reflect that.
 # Violin
 vln	1

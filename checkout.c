@@ -4,13 +4,21 @@
 #include <stdbool.h>
 #include "linux-functions.h"
 #define line_size 80
+#define max_instruments 30
+enum lineread {SUCCESS, BLANK, COMMENT, BADTYPE, NONUM};
+enum instrumenttype {VLN, VLA, CLO, BAS};
 struct instrument {
-	char *type;
+	enum instrumenttype type;
 	int num;
+	char *model;
+	
 	char *lname;
 	char *fname;
+	bool contract;
 	bool out;
 };
+
+
 void blank(const int length, struct instrument **array)
 {
 	for (int i = 0; i < length; i++)
@@ -32,7 +40,7 @@ void println(struct instrument *in, FILE *printdest)
 }
 void printarr(struct instrument **arr, FILE *printdest, const int which) //0 for checked in, 1 for checked out, 2 for all
 {
-	for (int i = 0; i < 30; i++)
+	for (int i = 0; i < max_instruments; i++)
 	{
 		if (arr[i] == 0)
 			return;
@@ -44,7 +52,7 @@ void printarr(struct instrument **arr, FILE *printdest, const int which) //0 for
 void addtoarray(struct instrument **array, struct instrument *add)
 {
 	int i = 0;
-	while (array[i] != 0 && i < 30)
+	while (array[i] != 0 && i < max_instruments)
 	{
 		//Check to see if the same instrument is already checked out
 		if (array[i]->num == add->num)
@@ -82,7 +90,7 @@ void addtoarray(struct instrument **array, struct instrument *add)
 		}
 		i++;
 	}
-	if (i >= 30)
+	if (i >= max_instruments)
 	{
 		fprintf(stderr, "**** ERR: OUT OF MEMORY FOR MORE INSTRUMENTS OF TYPE %s ****", add->type);
 		free(add->type);
@@ -99,7 +107,7 @@ void addtoarray(struct instrument **array, struct instrument *add)
 struct instrument *locateinarray(int num, struct instrument **array)
 {
 	//Locate an instrument of a given number in an array
-	for (int i = 0; i < 30 && array[i] != 0; i++)
+	for (int i = 0; i < max_instruments && array[i] != 0; i++)
 	{
 		if (array[i]->num == num)
 			return array[i];
@@ -204,30 +212,73 @@ long updatefile(FILE *stream, size_t overwrite, size_t size, char * buffer, long
 	fseek(stream, resume, SEEK_SET);
 	return resume;
 }
-int readentry(struct instrument *add, char *line) //1 normal, -1 empty line
+enum lineread readentry(struct instrument *add, FILE *stream) //1 normal, -1 empty line
 {
 	//TODO fix this function. It doesn't work.
-	//Empty and comment lines must already be removed
-	//int linelength = strlen(line) + 2;
-	char *filelinesplit = strtok(line, "\n\t");
-	for (int column = 1; column < 5; column++)
+	//TODO create enum for output so different read errors can be tracked
+	char *line =  malloc(line_size * sizeof(char));
+	ssize_t linechars;
+	size_t linetotal = line_size;
+	linechars = getline(&fileline, &linetotal, outtab);
+	if (linechars == EOF || fileline[0] == '#' || fileline[0] == '\n')
 	{
-		char *linecopy = malloc((strlen(filelinesplit) + 2) * sizeof(char));
-		strcopy(linecopy,filelinesplit);
-		if (linecopy[0] == 0)
+		//free(fileline);
+		free(temptostore);
+	}
+	else
+	{
+		//Divides outtab by \t, loading into temptostore
+		char *filelinebegin = fileline, *filelinesplit = strtok(fileline, "\t\n");
+		for (int column = 1; column < 5; column++) //Loop counts column of outtab
 		{
-			free(linecopy);
-			if (column == 1)
-				return -1;
-			if (column == 2)
+			char *linecopy = malloc(linechars * sizeof(char));
+			strcopy(linecopy,filelinesplit);
+			//If splitting results in nothing, mark entry as checked out or discard line
+			if (filelinesplit[0] == '\0')
 			{
-				free(add->type);
-				return -1;
+				if (column > 1)
+				{
+					temptostore->out = false;
+				}
+				else if (column = 1)
+				{
+					free(temptostore->type);
+				}
+				free(linecopy);
+				column = 7;
+				break;
 			}
-
+			//Switch based on order in outtab
+			switch (column)
+			{
+				case 1:
+					temptostore->type = linecopy;
+					break;
+				case 2:
+					temptostore->num = atoi(linecopy);
+					//Ensure sane instrument numbers (ie > 0)
+					if (temptostore->num < 1)
+					{
+						fprintf(stderr,"**** ERR: ABNORMAL INSTRUMENT NUMBER - LINE %d ****", linenum);
+						free(temptostore->type);
+						free(temptostore);
+					}
+					free(linecopy);
+					break;
+				case 3:
+					temptostore->lname = linecopy;
+					break;
+				case 4:
+					temptostore->fname = linecopy;
+					break;
+				case 7:
+					break;
+				default:
+					fprintf(stderr, "**** ERR: SPLITTING STRING - LINE %d ****", linenum);
+					break;
+			}
+			filelinesplit = strtok(NULL, "\t\n");
 		}
-
-		filelinesplit = strtok(NULL, "\t\n");
 	}
 }
 int main(void)
@@ -236,8 +287,8 @@ int main(void)
 	printf("The outtab file must be located in the same directory as the program, as it stores data about who has checked out what.");
 	FILE *outtab = fopen("outtab", "r+");
 	rewind(outtab);
-	struct instrument *vln[30], *vla[30], *clo[30], *bas[30];
-	blank(30, vla); blank(30, vln); blank(30, clo); blank(30, bas);
+	struct instrument *vln[max_instruments], *vla[max_instruments], *clo[max_instruments], *bas[max_instruments];
+	blank(max_instruments, vla); blank(max_instruments, vln); blank(max_instruments, clo); blank(max_instruments, bas);
 	if (outtab == 0)
 	{
 		printf("**** ERR: UNABLE TO OPEN \"outtab\" FOR READING. ****\nEnsure the program is located in the same folder as \"outtab\"");
@@ -350,6 +401,7 @@ int main(void)
 		{
 			case 'o':
 			case 'O':
+			{
 				struct instrument *temptoinsert = malloc(sizeof(struct instrument));
 				clearline(stdin); //Ensure stdin has no trailing newline
 				printf("Instrument type and num to check out");
@@ -385,7 +437,20 @@ int main(void)
 				int instrumentnum = atoi(filelinechars);
 
 				char *linecopy = malloc(filelinechars * sizeof(char));
+			}
+			case '~':
+			{
+				printf("Add instrument (a), Delete instrument (d), Change make/model (m)");
+				switch (getchar());
+				case 'a':
+				case 'A':
+				{
+					char *line = malloc(line_size * sizeof(char));
+					fseek(outtab, 0, SEEK_END);
+					printf("What is the instrument type and number? (type, num) > ");
 
+				}
+			}
 		}
 
 	}
