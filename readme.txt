@@ -26,4 +26,4 @@ TODO: Loop and questions for checkout need finishing
 TODO: Fix readentry and integrate into rest of program
 TODO: Create enum list for readentry so different read errors can be tracked
 
-TODO: Needed Columns	Type	Num	last	first	PayType	Make/Model	Signed
+TODO: Needed Columns	Type	Num	Last	First	PayType	Make/Model	Signed

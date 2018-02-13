@@ -11,12 +11,17 @@ struct instrument {
 	enum instrumenttype type;
 	int num;
 	char *model;
-	
 	char *lname;
 	char *fname;
 	bool contract;
 	bool out;
 };
+struct input {
+	char *str;
+	unsigned line;
+	struct input *next;
+	struct input *prev;
+}
 
 
 void blank(const int length, struct instrument **array)
@@ -25,11 +30,11 @@ void blank(const int length, struct instrument **array)
 		array[i] = 0;
 	return;
 }
-void clearline(FILE *input)
+void clearline(FILE *stream)
 {
 	int c;
 	do
-		c = fgetc(input);
+		c = fgetc(stream);
 	while (c != '\n' && c != -1);
 	return;
 }

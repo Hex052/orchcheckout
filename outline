@@ -1,0 +1,21 @@
+Program
+Take file as either contents and checkout, or as argument to program
+	Either both or none must be specified
+From files, copy into memory
+	Each line gets own structure, with line number
+Build array of instrument properties based on 'contents'
+	Save line number of each member in index
+Build array of checkouts based on 'checkout'
+	Save line number of each member in index
+	Increment counter for each in 'contents' to ensure no instruments are checked out more times than available
+
+
+
+File Setup
+First line contains versions and notice to not edit by hand
+	1	Editing these by hand can break the checkout lists, be careful!
+checkouts
+	Only list of checked out instruments
+	Type	Number	Name	Period	PaymentType	Signed
+contents
+	Type	Number	Make/Model	Number available
