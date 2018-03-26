@@ -1,13 +1,11 @@
 Program
-Take file as either contents and checkout, or as argument to program
-	Either both or none must be specified
-From files, copy into memory
-	Each line gets own structure, with line number
-Build array of instrument properties based on 'contents'
-	Save line number of each member in index
-Build array of checkouts based on 'checkout'
-	Save line number of each member in index
-	Increment counter for each in 'contents' to ensure no instruments are checked out more times than available
+Contents and checkout passed as arguments if not in same folder
+From files, copy lines individually into array (in struct also containing total number of lines)
+	Individual lines: { short unsigned linenum, char *linechars }
+Parse contents lines for type and number, sort into separate array with line numbers
+	struct{ char *num, struct *next, struct *prev}
+Take in checkouts, do similar
+	struct{ char *num, char *name, struct *numnext, struct *numprev, struct *namenext, struct *nameprev}
 
 
 
