@@ -7,13 +7,15 @@ Parse contents lines for type and number, sort into separate array with line num
 Take in checkouts, do similar
 	struct{ char *num, char *name, struct *numnext, struct *numprev, struct *namenext, struct *nameprev}
 
+Two arrays, one for instruments, another for pointers into list of chkouts or inventory.
+Don't use int for numbers, as you can have a 12B and 12A, or items may be lettered instead.
 
 
 File Setup
 First line contains versions and notice to not edit by hand
 	1	Editing these by hand can break the checkout lists, be careful!
-checkouts
+chkout	6 col
 	Only list of checked out instruments
 	Type	Number	Name	Period	PaymentType	Signed
-contents
-	Type	Number	Make/Model	Number available
+inventory	5 col
+	Type	Number	Make/Model	Serial Number	Number available
