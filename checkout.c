@@ -77,8 +77,9 @@ unsigned filelines(FILE *stream, char ***lines)
 int main(int argc, char *argv[])
 {
 	FILE *inventorystream = 0, *chkoutstream = 0;
-	unsigned short inventorylen = 0, chkoutlen = 0;
+	unsigned short inventorylen = 0, chkoutlen = 0, inventorycount = 0, chkoutcount = 0;
 	char **inventorylines = 0, **chkoutlines = 0;
+	struct inventory *inventorystart = 0;
 	if (inventorylines == 0 || chkoutlines == 0)
 	{
 		fputs("Error allocating memory.\n", stderr);
@@ -107,6 +108,80 @@ int main(int argc, char *argv[])
 	/* Read files */
 	inventorylen = filelines(inventorystream, &inventorylines);
 	chkoutlen = filelines(chkoutstream, &chkoutlines);
+
+	/* Intake inventory */
+	for (unsigned i = 1; i + 1 <= inventorylen; i++) //Starts at 1, since line 0 holds file info, not inventory info. inventorylen starts counting from 0 for no lines, but i has 0 as the first line
+	{
+		struct inventory *item = malloc(sizeof(struct inventory));
+		char *tempstring, *linestr = malloc(strlen(inventorylines[i]) + 3); //Extra two bytes to be sure
+		strcpy(linestr, inventorylines[i]);
+		item->linenum = i + 1;
+		if (item == 0)
+		{
+			fputs("Error allocating memory.\n", stderr);
+			exit(2);
+		}
+		if (linestr[0] == '#') //If the line is a comment, skip it.
+			continue;
+		/*  Type  */
+		tempstring = strtok(linestr, "\t\n");
+		if (tempstring == 0)
+		{
+			free(item);
+			continue;
+		}
+		item->type = malloc(strlen(tempstring));
+		strcpy(item->type, tempstring);
+		/*  Number  */
+		tempstring = strtok(linestr, "\t\n");
+		if (tempstring == 0)
+		{
+			free(item->type); free(item);
+			continue;
+		}
+		item->num = malloc(strlen(tempstring));
+		strcpy(item->num, tempstring);
+		/*  Avaliable  */
+		strtok(linestr, "\t\n"); //Make column
+		strtok(linestr, "\t\n"); //Serial number column
+		tempstring = strtok(linestr, "\t\n");
+		if (tempstring == 0)
+		{
+			free(item->type); free(item->num); free(item);
+			continue;
+		}
+		item->count = atoi(tempstring);
+		if (item->count < 0)
+		{
+			printf("In %s %s, a negative amout are avaliable for checkout. (%i)\n", item->type, item->num, item->count);
+			do
+			{
+				char *line = 0; size_t n = 0;
+				puts("Please type the correct number.>");
+				getline(&line, &n, stdin);
+				item->count = atoi(line);
+				free(line);
+			} while (item->count < 0);
+		}
+		if (item->count > 5)
+		{
+			printf("Item of type \"%s\", numbered \"%s\", can be checked out %i times. If this is intended, ignore this message.\n", item->type, item->num, item->count);
+		}
+		if (inventorystart == 0)
+		{
+			inventorystart = item;
+			item->numnext = 0;
+			item->numprev = 0;
+		}
+		else
+		{
+			item->numprev = 0;
+			item->numnext = inventorystart;
+			inventorystart->numprev = item;
+		}
+		free(linestr);
+		inventorycount++;
+	}
 
 	/* Sort inventory */
 
