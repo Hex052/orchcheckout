@@ -148,10 +148,10 @@ unsigned filelines(FILE *stream, char ***lines)
 
 int main(int argc, char *argv[])
 {
-	FILE *inventorystream = 0, *chkoutstream = 0;
-	unsigned short inventorylen = 0, chkoutlen = 0, inventorycount = 0, chkoutcount = 0;
+	FILE *inventory_stream = 0, *chkout_stream = 0;
+	unsigned short inventory_totlines = 0, chkout_totlines = 0, inventory_count = 0, chkout_count = 0;
 	char **inventorylines = 0, **chkoutlines = 0;
-	struct inventory *inventorystart = 0;
+	struct inventory *inventory_list = 0;
 	if (inventorylines == 0 || chkoutlines == 0)
 	{
 		fputs("Error allocating memory.\n", stderr);
@@ -164,25 +164,25 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-		inventorystream = fopen("inventory", "r+"); //TODO Create relevant file
-		if (inventorystream == 0)
+		inventory_stream = fopen("inventory", "r+"); //TODO Create relevant file
+		if (inventory_stream == 0)
 		{
 			fputs("The file \"inventory\" is not avaliable in the same directory.\n", stderr); //TODO Implement arguments.
 			exit(1);
 		}
-		chkoutstream = fopen("out", "r+"); //TODO Create relevant file
-		if (chkoutstream == 0)
+		chkout_stream = fopen("out", "r+"); //TODO Create relevant file
+		if (chkout_stream == 0)
 		{
 			fputs("The file \"chkout\" is not avaliable in the same directory.\n", stderr); //TODO Implement arguments.
 			exit(1);
 		}
 	}
 	/* Read files */
-	inventorylen = filelines(inventorystream, &inventorylines);
-	chkoutlen = filelines(chkoutstream, &chkoutlines);
+	inventory_totlines = filelines(inventory_stream, &inventorylines);
+	chkout_totlines = filelines(chkout_stream, &chkoutlines);
 
 	/* Intake inventory */
-	for (unsigned i = 1; i + 1 <= inventorylen; i++) //Starts at 1, since line 0 holds file info, not inventory info. inventorylen starts counting from 0 for no lines, but i has 0 as the first line
+	for (unsigned i = 1; i + 1 <= inventory_totlines; i++) //Starts at 1, since line 0 holds file info, not inventory info. inventory_totlines starts counting from 0 for no lines, but i has 0 as the first line
 	{
 		struct inventory *item = malloc(sizeof(struct inventory));
 		char *tempstring, *linestr = malloc(strlen(inventorylines[i]) + 3); //Extra two bytes to be sure
@@ -239,20 +239,20 @@ int main(int argc, char *argv[])
 		{
 			printf("Item of type \"%s\", numbered \"%s\", can be checked out %i times. If this is intended, ignore this message.\n", item->type, item->num, item->count);
 		}
-		if (inventorystart == 0)
+		if (inventory_list == 0)
 		{
-			inventorystart = item;
+			inventory_list = item;
 			item->numnext = 0;
 			item->numprev = 0;
 		}
 		else
 		{
 			item->numprev = 0;
-			item->numnext = inventorystart;
-			inventorystart->numprev = item;
+			item->numnext = inventory_list;
+			inventory_list->numprev = item;
 		}
 		free(linestr);
-		inventorycount++;
+		inventory_count++;
 	}
 
 	/* Sort inventory */
