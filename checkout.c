@@ -6,6 +6,7 @@
 #define line_size 80
 #define max_instruments 30
 
+enum listadvance_type {INVENTORY, CHKOUTNUM, CHKOUTNAME};
 struct inventory {
 	unsigned short linenum;
 	char *num;
@@ -19,12 +20,83 @@ struct chkout {
 	char *num;
 	char *type;
 	char *name;
-	struct chkout *linenext;
-	struct chkout *lineprev;
+	struct chkout *namenext;
+	struct chkout *nameprev;
 	struct chkout *numnext;
 	struct chkout *numprev;
 };
-
+void *listadvance(void *member, int dist, enum listadvance_type type)
+//Pass in starting element, amount to go foreward or back, and type of structure.
+//Returns element dist places away, unless end was closer, in which case returns end.
+{
+	if (type == INVENTORY)
+	{
+		while (dist > 0)
+		{
+			if (((struct inventory *)member)->numprev == 0)
+			{
+				return member;
+			}
+			member = ((struct inventory *)member)->numprev;
+			dist--;
+		}
+		while (dist < 0)
+		{
+			if (((struct inventory *)member)->numnext == 0)
+			{
+				return member;
+			}
+			member = ((struct inventory *)member)->numnext;
+			dist++;
+		}
+		return member;
+	}
+	else if (type == CHKOUTNUM)
+	{
+		while (dist > 0)
+		{
+			if (((struct chkout *)member)->numprev == 0)
+			{
+				return member;
+			}
+			member = ((struct chkout *)member)->numprev;
+			dist--;
+		}
+		while (dist < 0)
+		{
+			if (((struct chkout *)member)->numnext == 0)
+			{
+				return member;
+			}
+			member = ((struct chkout *)member)->numnext;
+			dist++;
+		}
+		return member;
+	}
+	else if (type == CHKOUTNAME)
+	{
+		while (dist > 0)
+		{
+			if (((struct chkout *)member)->nameprev == 0)
+			{
+				return member;
+			}
+			member = ((struct chkout *)member)->nameprev;
+			dist--;
+		}
+		while (dist < 0)
+		{
+			if (((struct chkout *)member)->namenext == 0)
+			{
+				return member;
+			}
+			member = ((struct chkout *)member)->namenext;
+			dist++;
+		}
+		return member;
+	}
+	return 0;
+}
 void clearline(FILE *stream)
 {
 	int c;

@@ -11,6 +11,9 @@ strtok splits strings.
 
 My functions:
 unsigned filelines(FILE *stream, char ***lines) //Returns total number of lines read from file
+void *listadvance(void *member, int dist, enum listadvance_type type)
+//Pass in starting element, amount to go foreward or back, and type of structure.
+//Returns element dist places away, unless end was closer, in which case returns end.
 
 List of errors that could result from reading a line:
 	SUCCESS	Read was successful
