@@ -108,7 +108,7 @@ void clearline(FILE *stream)
 
 unsigned filelines(FILE *stream, char ***lines)
 //Returns total number of lines read from file
-//TODO Error checking?
+//IDEA Error checking?
 {
 	unsigned read = 0;
 	unsigned allocated = 40;
@@ -165,12 +165,13 @@ int main(int argc, char *argv[])
 	else
 	{
 		inventory_stream = fopen("inventory", "r+"); //TODO Create relevant file
+		//QUESTION Is the "b" flag needed for Windows / Mac, where newlines are different?
 		if (inventory_stream == 0)
 		{
 			fputs("The file \"inventory\" is not avaliable in the same directory.\n", stderr); //TODO Implement arguments.
 			exit(1);
 		}
-		chkout_stream = fopen("out", "r+"); //TODO Create relevant file
+		chkout_stream = fopen("chkout", "r+"); //TODO Create relevant file
 		if (chkout_stream == 0)
 		{
 			fputs("The file \"chkout\" is not avaliable in the same directory.\n", stderr); //TODO Implement arguments.
@@ -256,5 +257,79 @@ int main(int argc, char *argv[])
 	}
 
 	/* Sort inventory */
+	if (inventory_list == 0)
+	{
+		fputs("There is nothing in the inventory. Please add items before checking anything out.\n", stderr);
+	}
+	else	//IDEA Better sorting, not insert sort.
+	{
+		/* Beginning of new list */
+		struct inventory *new_list = inventory_list;
+		new_list->numprev = 0;
+		new_list->numnext = 0;
+		inventory_list = inventory_list->numnext;
+
+		/* Foreach, insert into new */
+		while (inventory_list != 0)
+		{
+			enum loc {NONE, BEFORE, AFTER};
+			enum loc loc = NONE;
+			struct inventory *search = new_list, *insert = inventory_list;
+			inventory_list->numprev = 0;
+			inventory_list = inventory_list->numnext;
+			while ((strcmp(insert->type, search->type) > 0) && (search->numnext != 0))
+				//Until there is no next or type is equal or less
+				search = search->numnext;
+			while (strcmp(insert->type, search->type) == 0 && strcmp(insert->num, search->num) > 0 && search->numnext != 0)
+				//If same type, proceed foreward until num is less or equal or no next
+				search = search->numnext;
+
+			/* Determine if goes before or after search */
+			if      (strcmp(insert->type, search->type) < 0)
+				//Smaller type
+				loc = BEFORE;
+			else if (strcmp(insert->type, search->type) > 0)
+				//Greater type
+				loc = AFTER;
+			else if (strcmp(insert->num, search->num) > 0)
+				//Equal type, greater num
+				loc = AFTER;
+			else if (strcmp(insert->num, search->num) <= 0)
+				//Equal type, equal or less num
+				loc = BEFORE;
+			else
+			{
+				/*  It shouldn't ever use this option
+				 *		type
+				 *	less	equal	greater
+				 *	less	before	before	after
+				 * num	equal	before	before	after
+				 *	greater	before	after	after */
+				fputs("\nAah! Something has gone terribly wrong.\nIf reported, include this\n/* Determine if goes before or after search */\n", stderr);
+				exit(3);
+			}
+
+			/* Move into position. Switch statement not used due to incompatability with enum */
+			if (loc == BEFORE)
+			{
+				insert->numnext = search;
+				search->numprev->numnext = insert;
+				insert->numprev = search->numprev;
+				search->numprev = insert;
+				if (new_list == insert->numnext) /* Which is == search, so if insert is now first */
+				{
+					new_list = insert;
+				}
+			}
+			else //Don't need to test for after, no other condition would be here.
+			{
+				insert->numnext = search->numnext;
+				search->numnext = insert;
+				insert->numprev = search;
+				//Don't need to set insert->numnext->numprev since search is at end of list and numnext == 0
+			}
+		}
+		inventory_list = new_list;
+	}
 
 }
