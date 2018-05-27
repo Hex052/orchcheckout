@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include "linux-functions.h"
+//#include "linux-functions.h"
 #define line_size 80
 #define max_instruments 30
 
@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
 	unsigned short inventory_totlines = 0, chkout_totlines = 0, inventory_count = 0, chkout_count = 0;
 	char **inventorylines = 0, **chkoutlines = 0;
 	struct inventory *inventory_list = 0;
-	struct chkout *chkout_listnum = 0, *chkout_listname = 0, **chkout_arrtype = 0;
+	struct chkout *chkout_listbynum = 0, *chkout_listbyname = 0, **chkout_arrtype = 0;
 	if (inventorylines == 0 || chkoutlines == 0)
 	{
 		fputs("Error allocating memory.\n", stderr);
@@ -278,7 +278,6 @@ int main(int argc, char *argv[])
 			enum loc {NONE, BEFORE, AFTER};
 			enum loc loc = NONE;
 			struct inventory *search = new_list, *insert = inventory_list;
-			inventory_list = inventory_list->numnext;
 			inventory_list->numprev = 0;
 			while ((strcmp(insert->type, search->type) > 0) && (search->numnext != 0))
 				//Until there is no next or type is equal or less
@@ -286,50 +285,38 @@ int main(int argc, char *argv[])
 			while (strcmp(insert->type, search->type) == 0 && strcmp(insert->num, search->num) > 0 && search->numnext != 0)
 				//If same type, proceed foreward until num is less or equal or no next
 				search = search->numnext;
-
-			/* Determine if goes before or after search */
-			if      (strcmp(insert->type, search->type) < 0)
-				//Smaller type
+			/* Determine if goes before or after search
+			 *                       type
+			 *               less    equal   greater
+			 *      less     BEFORE  BEFORE  AFTER
+			 * num	equal    BEFORE  BEFORE  AFTER
+			 *      greater  BEFORE  AFTER   AFTER */
+			if      (strcmp(insert->type, search->type) < 0) //Smaller type
 				loc = BEFORE;
-			else if (strcmp(insert->type, search->type) > 0)
-				//Greater type
+			else if (strcmp(insert->type, search->type) > 0) //Greater type
 				loc = AFTER;
-			else if (strcmp(insert->num, search->num) > 0)
-				//Equal type, greater num
+			else if (strcmp(insert->num, search->num) > 0) //Equal type, greater num
 				loc = AFTER;
-			else if (strcmp(insert->num, search->num) <= 0)
-				//Equal type, equal or less num
+			else //Equal type, equal or less num
 				loc = BEFORE;
-			else
-			{
-				/*  It shouldn't ever use this option
-				 *		type
-				 *	less	equal	greater
-				 *	less	before	before	after
-				 * num	equal	before	before	after
-				 *	greater	before	after	after */
-				fputs("\nAah! Something has gone terribly wrong.\nIf reported, include this\n/* Determine if goes before or after search */\n", stderr);
-				exit(3);
-			}
-
 			/* Move into position. Switch statement not used due to incompatability with enum */
 			if (loc == BEFORE)
 			{
 				insert->numnext = search;
-				search->numprev->numnext = insert;
 				insert->numprev = search->numprev;
 				search->numprev = insert;
-				if (new_list == insert->numnext) /* Which is == search, so if insert is now first */
-				{
+				if (insert->numprev != 0)
+					insert->numprev->numnext = insert;
+				if (new_list == insert->numnext) /* If should be first */
 					new_list = insert;
-				}
 			}
-			else //Don't need to test for after, no other condition would be here.
+			else
 			{
 				insert->numnext = search->numnext;
 				search->numnext = insert;
 				insert->numprev = search;
-				//Don't need to set insert->numnext->numprev since search is at end of list and numnext == 0
+				if (insert->numnext != 0)
+					insert->numnext->numprev = insert;
 			}
 		}
 		inventory_list = new_list;
