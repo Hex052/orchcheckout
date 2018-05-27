@@ -152,6 +152,7 @@ int main(int argc, char *argv[])
 	unsigned short inventory_totlines = 0, chkout_totlines = 0, inventory_count = 0, chkout_count = 0;
 	char **inventorylines = 0, **chkoutlines = 0;
 	struct inventory *inventory_list = 0;
+	struct chkout *chkout_listnum = 0, *chkout_listname = 0, **chkout_arrtype = 0;
 	if (inventorylines == 0 || chkoutlines == 0)
 	{
 		fputs("Error allocating memory.\n", stderr);
@@ -251,6 +252,7 @@ int main(int argc, char *argv[])
 			item->numprev = 0;
 			item->numnext = inventory_list;
 			inventory_list->numprev = item;
+			inventory_list = item;
 		}
 		free(linestr);
 		inventory_count++;
@@ -264,6 +266,7 @@ int main(int argc, char *argv[])
 	else	//IDEA Better sorting, not insert sort.
 	{
 		/* Beginning of new list */
+		//TODO Is from here to the first strcmp broken?
 		struct inventory *new_list = inventory_list;
 		new_list->numprev = 0;
 		new_list->numnext = 0;
@@ -275,8 +278,8 @@ int main(int argc, char *argv[])
 			enum loc {NONE, BEFORE, AFTER};
 			enum loc loc = NONE;
 			struct inventory *search = new_list, *insert = inventory_list;
-			inventory_list->numprev = 0;
 			inventory_list = inventory_list->numnext;
+			inventory_list->numprev = 0;
 			while ((strcmp(insert->type, search->type) > 0) && (search->numnext != 0))
 				//Until there is no next or type is equal or less
 				search = search->numnext;
@@ -332,4 +335,157 @@ int main(int argc, char *argv[])
 		inventory_list = new_list;
 	}
 
+	/* Intake chkout */
+	for (unsigned i = 1; i + 1 <= chkout_totlines; i++) //Starts at 1, since line 0 holds file info, not chkout info. chkout_totlines starts counting from 0 for no lines, but i has 0 as the first line
+	//TODO This needs to decrement the entries in inventory
+	{
+		struct chkout *item = malloc(sizeof(struct chkout));
+		char *tempstring, *linestr = malloc(strlen(inventorylines[i]) + 3); //Extra two bytes to be sure
+		strcpy(linestr, chkoutlines[i]);
+		item->linenum = i + 1;
+		if (item == 0) //memory allocation error
+		{
+			fputs("Error allocating memory.\n", stderr);
+			exit(2);
+		}
+		if (linestr[0] == '#') //If the line is a comment, skip it.
+			continue;
+		/*  Type  */
+		tempstring = strtok(linestr, "\t\n");
+		if (tempstring == 0) //Blank line
+		{
+			free(item);
+			continue;
+		}
+		item->type = malloc(strlen(tempstring));
+		strcpy(item->type, tempstring);
+		/*  Number  */
+		tempstring = strtok(linestr, "\t\n");
+		if (tempstring == 0) //Incomplete line
+		{
+			free(item->type); free(item);
+			continue;
+		}
+		item->num = malloc(strlen(tempstring));
+		strcpy(item->num, tempstring);
+		/*  Name  */
+		tempstring = strtok(linestr, "\t\n");
+		if (tempstring == 0) //Incomplete line
+		{
+			free(item->type); free(item->num); free(item);
+			continue;
+		}
+		item->name = malloc(strlen(tempstring));
+		strcpy(item->name, tempstring);
+		/* Add to list */
+		if (chkout_listbynum == 0)
+		{
+			chkout_listbynum = item;
+			item->numnext = 0;
+			item->numprev = 0;
+		}
+		else
+		{
+			item->numprev = 0;
+			item->numnext = chkout_listbynum;
+			chkout_listbynum->numprev = item;
+		}
+		free(linestr);
+		chkout_count++;
+	}
+
+	if (chkout_listbynum == 0)
+	{
+		printf("There are no instruments checked out right now.");
+	}
+	else //NOTE stored in chkout_listbynum out of order
+	{
+		enum loc {NONE, BEFORE, AFTER};
+		enum loc loc = NONE;
+		struct chkout *tosort, *search, *index;
+		chkout_listbyname = chkout_listbynum;
+		chkout_listbynum = chkout_listbynum->numnext;
+		chkout_listbyname->namenext = 0; chkout_listbyname->nameprev = 0;
+		/* Sort chkout by name into chkout_listbyname */
+		while (chkout_listbynum != 0)
+		{
+			tosort = chkout_listbynum;
+			search = chkout_listbyname;
+			chkout_listbynum = chkout_listbynum->numnext;
+			tosort->numnext = 0; tosort->numprev = 0;
+			while (strcmp(tosort->name, search->name) > 0 && search->namenext != 0)
+				//Until there is no next or type is equal or less
+				search = search->namenext;
+			if (strcmp(tosort->name, search->name) > 0) //tosort goes after search
+			{
+				tosort->namenext = search->namenext;
+				tosort->nameprev = search;
+				search->namenext = tosort;
+				if (tosort->namenext != 0)
+					tosort->namenext->nameprev = tosort;
+			}
+			else //tosort is less than or equal, and goes before
+			{
+				tosort->namenext = search;
+				tosort->nameprev = search->nameprev;
+				search->nameprev = tosort;
+				if (tosort->nameprev != 0)
+					tosort->nameprev->namenext = tosort;
+				if (tosort->namenext == chkout_listbyname) //If it would go before the first
+					chkout_listbyname = tosort;
+			}
+		}
+		/* Sort chkout by num into chkout_listbynum from listbynum */
+		chkout_listbynum = chkout_listbyname;
+		index = chkout_listbyname->namenext;
+		chkout_listbynum->numnext = 0; chkout_listbynum->numprev = 0;
+		while (index != 0)
+		{
+			tosort = index;
+			search = chkout_listbynum;
+			index = index->namenext;
+			while (strcmp(tosort->type, search->type) > 0 && search->numnext != 0)
+				//Until there is no next or type is equal or less
+				search = search->numnext;
+			while (strcmp(tosort->type, search->type) == 0 && strcmp(tosort->num, search->num) > 0 && search->numnext != 0)
+				//If same type, proceed foreward until num is less or equal or no next
+				search = search->numnext;
+			/* Determine if goes before or after search
+			 *                        type
+			 *               less    equal   greater
+			 *      less     BEFORE  BEFORE  AFTER
+			 * num	equal    BEFORE  BEFORE  AFTER
+			 *      greater  BEFORE  AFTER   AFTER */
+			if (strcmp(tosort->type, search->type) < 0)
+				//Smaller type
+				loc = BEFORE;
+			else if (strcmp(tosort->type, search->type) > 0)
+				//Greater type
+				loc = AFTER;
+			else if (strcmp(tosort->num, search->num) > 0)
+				//Equal type, greater num
+				loc = AFTER;
+			else //Equal type, equal or less num
+				loc = BEFORE;
+			/* Insert in position */
+			if (loc == BEFORE)
+			{
+				tosort->numnext = search;
+				tosort->numprev = search->numprev;
+				search->numprev = tosort;
+				if (tosort->numprev != 0)
+					tosort->numprev->numnext = tosort;
+				if (tosort->numnext == chkout_listbynum) /* If should be first */
+					chkout_listbynum = tosort;
+			}
+			else
+			{
+				tosort->numnext = search->numnext;
+				search->numnext = tosort;
+				tosort->numprev = search;
+				if (tosort->numnext != 0)
+					tosort->numnext->numprev = tosort;
+			}
+		}
+	}
 }

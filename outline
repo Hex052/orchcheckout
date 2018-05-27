@@ -16,6 +16,6 @@ First line contains versions and notice to not edit by hand
 	1	Editing these by hand can break the checkout lists, be careful!
 chkout	6 col
 	Only list of checked out instruments
-	Type	Number	Name	Period	PaymentType	Signed
+	Type	Number	Name	Period	Payment Type	Signed	Amount due
 inventory	5 col
 	Type	Number	Make/Model	Serial Number	Number available
